@@ -1,2 +1,2 @@
-# cps2003assignemnt
-Systems Programming Assignment
+# CPS2003 Systems Programming Assignment
+## Mark Said Camilleri
