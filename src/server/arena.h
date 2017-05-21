@@ -4,9 +4,11 @@
  * @version 20170521
  */
 
+#ifndef SERVER_ARENA_H
+#define SERVER_ARENA_H
 
-#ifndef SERVER_ARENA
-#define SERVER_ARENA
+int [][] generateArena(int x, int y);
 
 
-#endif  // SERVER_ARENA
+
+#endif  // SERVER_ARENA_H
