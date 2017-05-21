@@ -4,8 +4,8 @@
  * @version 20170521
  */
 
-#ifndef SERVER_NETWORK_H
-#define SERVER_NETWORK_H
+#ifndef ASSIGNMENT_NETWORK_SERVER_H
+#define ASSIGNMENT_NETWORK_SERVER_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,14 +16,13 @@
 #include <netinet/in.h>
 #include "listnode.h"
 #include "../../deps/zf_log/zf_log.h"
-
-#define PORT_NUMBER 123456
+#include "../config.h"
 
 ListNode * connectionList = NULL;
 
 int sockfd;
 
-void init(void);
+void init_server(void);
 
 void acceptConnections(struct sockaddr * cli_addr, socklen_t *clilen);
 
@@ -31,10 +30,10 @@ void close_all_connections(ListNode * node);
 
 void close_all(void);
 
-void send_message(ListNode * node, char* message);
+void send_message_to_client(ListNode *node, char *message);
 
 void send_message_to_list(ListNode * node, char* message);
 
 void broadcast_message(char * message);
 
-#endif  //SERVER_NETWORK_H
+#endif  //ASSIGNMENT_NETWORK_SERVER_H

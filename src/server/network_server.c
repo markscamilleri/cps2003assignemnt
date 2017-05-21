@@ -1,7 +1,7 @@
 
-#include "network.h"
+#include "network_server.h"
 
-void init(void) {
+void init_server(void) {
     socklen_t clilen;
     struct sockaddr_in serv_addr, cli_addr;
 
@@ -25,7 +25,7 @@ void init(void) {
     //Assigning address specified by addr to the socket referred by the sockfd
     if (bind(sockfd, (struct sockaddr *) &serv_addr,
              sizeof(serv_addr)) < 0) {
-        ZF_LOGW_STR("ERROR on binding");
+        ZF_LOGF_STR("ERROR on binding");
         exit(1);
     }
 
@@ -60,13 +60,13 @@ void close_all(void) {
     ListNode_clear(connectionList);
 }
 
-void send_message(ListNode *node, char *message) {
+void send_message_to_client(ListNode *node, char *message) {
     write(node->newsockfd, message, sizeof(message)/sizeof(char));
 }
 
 void send_message_to_list(ListNode *node, char *message) {
     if (node != NULL) {
-        send_message(node, message);
+        send_message_to_client(node, message);
         send_message_to_list(node->next, message);
     }
 }
