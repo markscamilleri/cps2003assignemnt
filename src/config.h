@@ -9,7 +9,8 @@
 #ifndef ASSIGNMENT_CONFIG_H
 #define ASSIGNMENT_CONFIG_H
 
-#define PORT_NUMBER 12345
+#define PORT_NUMBER 24689
 #define ZF_LOG_LEVEL ZF_LOG_DEBUG
+#define SERVER_DOWN "Server going down"
 
 #endif //ASSIGNMENT_CONFIG_H

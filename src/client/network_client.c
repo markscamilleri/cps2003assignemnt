@@ -6,22 +6,28 @@
 
 #include "network_client.h"
 
+int client_sockfd;
+
 void init_client(char *host) {
+    closeClient = 0;
+
     struct sockaddr_in serv_addr;
     struct hostent *server;
 
     //Getting socket descriptor
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
+    client_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_sockfd < 0) {
         ZF_LOGF_STR("ERROR opening socket");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
+
+    atexit(close_client);
 
     //Resolving host name
     server = gethostbyname(host);
     if (server == NULL) {
         ZF_LOGW_STR("ERROR, no such host");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     //Sets first n bytes of the area to zero
@@ -35,29 +41,53 @@ void init_client(char *host) {
     serv_addr.sin_port = htons(PORT_NUMBER);
 
     //Attempt connection with server
-    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+    if (connect(client_sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         ZF_LOGF_STR("ERROR connecting");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
+
+    while (!closeClient) {
+        receive_message();
+    }
+
+    exit(EXIT_SUCCESS);
 }
 
 void send_message_to_server(char *message) {
     //Send message to server
-    ssize_t n = write(sockfd, message, strlen(message));
+    ssize_t n = write(client_sockfd, message, strlen(message));
     if (n < 0)
         ZF_LOGW_STR("ERROR writing to socket");
 }
-
-void receive_message() {
-    //Receive message from server
-    char buffer[255];
-
-    ssize_t n = read(sockfd, buffer, 255);
+//Receive message from server
+void receive_message(void) {
+    size_t size = 0;
+    ssize_t n = read(client_sockfd, &size, sizeof(size_t));
     if (n < 0)
-        ZF_LOGW_STR("ERROR reading from socket");
-    printf("%s\n", buffer);
+        ZF_LOGW_STR("ERROR reading size of data from socket");
+
+    ZF_LOGD("%d", size);
+
+    char buffer[size];
+
+    n = read(client_sockfd, buffer, size);
+    ZF_LOGI_STR("Message Received");
+
+    if (n < 0)
+        ZF_LOGW_STR("ERROR reading data from socket");
+
+    ZF_LOGD("%s", buffer);
+    if (strstr(buffer, SERVER_DOWN)) {
+        close_client();
+    }
 }
 
-void close_connection() {
-    close(sockfd);
+void close_connection(void) {
+    close(client_sockfd);
+    close(client_sockfd);
+}
+
+void close_client() {
+    closeClient = 1;
+    close_connection();
 }

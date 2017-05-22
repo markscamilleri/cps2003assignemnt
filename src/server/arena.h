@@ -7,7 +7,6 @@
 #ifndef SERVER_ARENA_H
 #define SERVER_ARENA_H
 
-int [][] generateArena(int x, int y);
 
 
 

@@ -18,15 +18,17 @@
 #include "../config.h"
 #include "../../deps/zf_log/zf_log.h"
 
-int sockfd;
+int closeClient;
 
-void init_server(void);
+void init_client(char *host);
 
 void send_message_to_server(char *message);
 
-void receive_message();
+void receive_message(void);
 
-void close_connection();
+void close_connection(void);
+
+void close_client(void);
 
 
 #endif //ASSIGNMENT_NETWORK_CLIENT_H

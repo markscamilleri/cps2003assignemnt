@@ -7,7 +7,7 @@
 #include "listnode.h"
 
 //Declared here to keep it "private"...
-int ListNode_rec_size(ListNode * node, int n);
+int ListNode_rec_size(ListNode *node, int n);
 
 void ListNode_add(ListNode *node, int sockfd) {
     if (node->next == NULL) {
@@ -38,28 +38,31 @@ void ListNode_remove(ListNode *node, int i) {
             // moving it to the left, to facilitate removal of the
             // first node also. Hence the check if next is null.
 
-            ListNode * next = node->next;
+            ListNode *next = node->next;
             node->newsockfd = next->newsockfd;
             node->next = next->next;
 
             free(next);
         }
-    } else ListNode_remove(node->next, i-1);
+    } else ListNode_remove(node->next, i - 1);
 }
 
 void ListNode_clear(ListNode *node) {
-    ListNode * next = node->next;
+    ListNode *next = node->next;
     free(node);
 
-    if(next != NULL)
+    if (next != NULL)
         ListNode_clear(next);
 }
 
-int ListNode_size(ListNode *node){
+int ListNode_size(ListNode *node) {
     return ListNode_rec_size(node, 0);
 }
 
-int ListNode_rec_size(ListNode * node, int n){
-    if(node == NULL) return n;
-    else return ListNode_rec_size(node->next, n+1);
+int ListNode_rec_size(ListNode *node, int n) {
+    if (node == NULL) return  n;
+    else {
+        ZF_LOGI("%d", node->newsockfd);
+        return ListNode_rec_size(node->next, n + 1);
+    }
 }
