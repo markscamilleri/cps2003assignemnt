@@ -94,7 +94,7 @@ void close_all_connections(ListNode *node) {
 }
 
 void close_all(void) {
-    broadcast_message(SERVER_DOWN);
+    broadcast_message(SERVER_DOWN_MESSAGE);
     close(server_sockfd);
     //Lock connection list
     pthread_mutex_lock(&connectionListMutex);
@@ -107,7 +107,7 @@ void close_all(void) {
     pthread_mutex_destroy(&connectionListMutex);
 }
 
-void send_message_to_client(ListNode *node, char *message) {
+void send_str_message_to_client(ListNode *node, char *message) {
     if(node != NULL) {
 
         size_t size = strlen(message);
@@ -126,9 +126,26 @@ void send_message_to_client(ListNode *node, char *message) {
     }
 }
 
+void send_str_message_to_sockfd(int sockfd, char *message) {
+    if(ListNode_getNodeIndexFromSockfd(connectionList, sockfd, 0) >= 0){
+        size_t size = strlen(message);
+
+        ssize_t n = write(sockfd, &size, sizeof(size_t));
+        if (n < 0) {
+            if (errno == EPIPE)
+                disconnect(sockfd);
+            ZF_LOGW_STR("ERROR writing to socket");
+        } else {
+            n = write(sockfd, message, size);
+            if (n < 0)
+                ZF_LOGW_STR("ERROR writing to socket");
+        }
+    }
+}
+
 void send_message_to_list(ListNode *node, char *message) {
     if (node != NULL) {
-        send_message_to_client(node, message);
+        send_str_message_to_client(node, message);
         send_message_to_list(node->next, message);
     }
 }
@@ -167,7 +184,7 @@ void receive_message(int clientsockfd) {
         if (n < 0)
             ZF_LOGW_STR("ERROR reading data from socket");
 
-        if (strstr(buffer, CLIENT_DOWN)) {
+        if (strstr(buffer, CLIENT_DOWN_MESSAGE)) {
             disconnect(clientsockfd);
             pthread_exit(NULL);
         }

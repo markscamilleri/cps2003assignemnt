@@ -24,16 +24,6 @@ typedef struct ListNode {
 } ListNode;
 
 /**
- * This type represents a tuple <int x ListNode>
- */
-typedef struct Pair {
-    int index;
-    ListNode * node;
-} Pair;
-
-typedef int (*Predicate)(ListNode *);
-
-/**
  * Adds an element at the end of the ListNode List given
  * @param node  the list to add it to
  * @param sockfd the int value (newsockfd)

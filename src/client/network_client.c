@@ -85,7 +85,7 @@ void receive_message(void) {
         if (n < 0)
             ZF_LOGW_STR("ERROR reading data from socket");
 
-        if (strstr(buffer, SERVER_DOWN)) {
+        if (strstr(buffer, SERVER_DOWN_MESSAGE)) {
             exit(EXIT_SUCCESS);
         }
     }

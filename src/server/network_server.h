@@ -29,7 +29,9 @@ void close_all(void);
 
 void close_server(void);
 
-void send_message_to_client(ListNode *node, char *message);
+void send_str_message_to_client(ListNode *node, char *message);
+
+void send_str_message_to_sockfd(int sockfd, char *message);;
 
 void send_message_to_list(ListNode * node, char* message);
 

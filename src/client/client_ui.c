@@ -107,7 +107,7 @@ void handle_input() {
 
         switch (ch) {
             case '0':
-                send_message_to_server(CLIENT_DOWN);
+                send_message_to_server(CLIENT_DOWN_MESSAGE);
                 exit(EXIT_SUCCESS);
             case KEY_RESIZE:
                 clear();
