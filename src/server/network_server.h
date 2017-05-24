@@ -21,7 +21,7 @@
 
 void init_server_and_accept_connections(int *start_sending);
 
-void aceept_connection(struct sockaddr *cli_addr, socklen_t *clilen);
+void accept_connection(struct sockaddr *cli_addr, socklen_t *clilen);
 
 void close_all_connections(ListNode * node);
 
@@ -37,4 +37,9 @@ void broadcast_message(char * message);
 
 ListNode * get_connection_list(void);
 
+pthread_mutex_t *get_connection_mutex();
+
+void receive_message(int newsockfd);
+
+void disconnect(int clientsockfd);
 #endif  //ASSIGNMENT_NETWORK_SERVER_H

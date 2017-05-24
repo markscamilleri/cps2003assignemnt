@@ -4,6 +4,7 @@
  * @version 20170521.
  */
 
+#include <pthread.h>
 #include "network_client.h"
 
 int client_sockfd;
@@ -46,39 +47,47 @@ void init_client(char *host) {
         exit(EXIT_FAILURE);
     }
 
-    while (!closeClient) {
-        receive_message();
-    }
+    atexit(close_client);
 
-    exit(EXIT_SUCCESS);
+    pthread_t connectionThread;
+    if (pthread_create(&connectionThread, NULL, receive_message, NULL) != 0) {
+        ZF_LOGF_STR("Error when creating new thread to accept incoming messages");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void send_message_to_server(char *message) {
-    //Send message to server
-    ssize_t n = write(client_sockfd, message, strlen(message));
+    size_t size = strlen(message);
+
+    ssize_t n = write(client_sockfd, &size, sizeof(size_t));
     if (n < 0)
         ZF_LOGW_STR("ERROR writing to socket");
+    else {
+        //Send message to server
+        n = write(client_sockfd, message, strlen(message));
+        if (n < 0)
+            ZF_LOGW_STR("ERROR writing to socket");
+    }
 }
+
 //Receive message from server
 void receive_message(void) {
-    size_t size = 0;
-    ssize_t n = read(client_sockfd, &size, sizeof(size_t));
-    if (n < 0)
-        ZF_LOGW_STR("ERROR reading size of data from socket");
+    while (!closeClient) {
+        size_t size = 0;
+        ssize_t n = read(client_sockfd, &size, sizeof(size_t));
+        if (n < 0) // No data to read;
+            continue;
 
-    ZF_LOGD("%d", size);
+        char buffer[size];
 
-    char buffer[size];
+        n = read(client_sockfd, buffer, size);
 
-    n = read(client_sockfd, buffer, size);
-    ZF_LOGI_STR("Message Received");
+        if (n < 0)
+            ZF_LOGW_STR("ERROR reading data from socket");
 
-    if (n < 0)
-        ZF_LOGW_STR("ERROR reading data from socket");
-
-    ZF_LOGD("%s", buffer);
-    if (strstr(buffer, SERVER_DOWN)) {
-        close_client();
+        if (strstr(buffer, SERVER_DOWN)) {
+            exit(EXIT_SUCCESS);
+        }
     }
 }
 

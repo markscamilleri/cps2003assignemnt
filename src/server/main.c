@@ -15,12 +15,12 @@ int main(void) {
     int start_sending = 0;
 
     pthread_t connectionThread;
-    if(pthread_create(&connectionThread, NULL, init_server_and_accept_connections, &start_sending) != 0){
+    if (pthread_create(&connectionThread, NULL, init_server_and_accept_connections, &start_sending) != 0) {
         ZF_LOGF_STR("Error when creating new thread");
         exit(EXIT_FAILURE);
     }
 
-    while(!start_sending);
+    while (!start_sending);
 
     while (ListNode_size(get_connection_list()) == 0) {
         ZF_LOGI("List ptr: %p", get_connection_list());
@@ -31,27 +31,24 @@ int main(void) {
     broadcast_message("How are you today?");
 
     ListNode *connectionList = get_connection_list();
+    pthread_mutex_t * mutex = get_connection_mutex();
 
     char *message;
-    sprintf(message, "There are %d active connections", ListNode_size(connectionList));
-    broadcast_message(message);
-    broadcast_message("Let's wait 10 seconds");
-    delay(10);
+    while (1) {
+        pthread_mutex_lock(mutex);
+        ZF_LOGI("There are %d active connections", ListNode_size(connectionList));
+        pthread_mutex_unlock(mutex);
+        broadcast_message(message);
+        broadcast_message("Let's wait 10 seconds");
+        delay(10);
 
-    sprintf(message, "There are %d active connections", ListNode_size(connectionList));
-    broadcast_message(message);
-    broadcast_message("Let's wait 10 seconds");
-    delay(10);
-
-    sprintf(message, "There are %d active connections", ListNode_size(connectionList));
-    broadcast_message(message);
-    broadcast_message("Let's wait 10 seconds");
-    delay(10);
-
-    sprintf(message, "There are %d active connections", ListNode_size(connectionList));
-    broadcast_message(message);
-    broadcast_message("Let's wait 10 seconds");
-    delay(10);
-
-    close_server();
+        pthread_mutex_lock(mutex);
+        ZF_LOGI("There are %d active and no inactive connections", ListNode_size(connectionList));
+        pthread_mutex_unlock(mutex);
+        broadcast_message(message);
+        broadcast_message("Let's wait 10 seconds");
+        delay(10);
+    }
+    ZF_LOGI_STR("Bye");
+    exit(EXIT_SUCCESS);
 }

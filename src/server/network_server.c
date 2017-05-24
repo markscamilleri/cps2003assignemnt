@@ -7,6 +7,9 @@
 #ifndef ASSIGNMENT_NETWORK_SERVER_C
 #define ASSIGNMENT_NETWORK_SERVER_C
 
+#include <fcntl.h>
+#include <errno.h>
+#include <signal.h>
 #include "network_server.h"
 
 ListNode *connectionList = NULL;
@@ -46,37 +49,40 @@ void init_server_and_accept_connections(int *start_sending) {
         exit(EXIT_FAILURE);
     }
 
+    atexit(close_server);
+
     //Marking socket as a socket that will be used to accept incoming connection requests
-    ZF_LOGI_STR("Listening for connections");
+    ZF_LOGD_STR("Listening for connections");
     listen(server_sockfd, 5);
     clilen = sizeof(cli_addr);
 
+    signal(SIGPIPE, SIG_IGN);
     *start_sending = 1;
 
     //Accepting an incoming connection request
     while (!closeServer) {
-        aceept_connection((struct sockaddr *) &cli_addr, &clilen);
+        accept_connection((struct sockaddr *) &cli_addr, &clilen);
     }
-
-    pthread_exit(NULL);
 }
 
-void aceept_connection(struct sockaddr *cli_addr, socklen_t *clilen) {
+void accept_connection(struct sockaddr *cli_addr, socklen_t *clilen) {
     int newsockfd = accept(server_sockfd, cli_addr, clilen);
+    pthread_mutex_lock(&connectionListMutex);
     if (newsockfd < 0)
         ZF_LOGW_STR("ERROR on accepting connection request");
     else {
-
         if (connectionList == NULL) {
-            ZF_LOGI("Allocating memory");
             connectionList = malloc(sizeof(ListNode));
-            ZF_LOGI("Putting data");
             connectionList->newsockfd = newsockfd;
             connectionList->next = NULL;
-            ZF_LOGI("Data is successful");
-            ZF_LOGI("%d", connectionList->newsockfd);
         } else ListNode_add(connectionList, newsockfd);
-        ZF_LOGI("There are %d nodes in the list", ListNode_size(connectionList));
+        ZF_LOGD("There are %d nodes in the list", ListNode_size(connectionList));
+    }
+    pthread_mutex_unlock(&connectionListMutex);
+    pthread_t connectionThread;
+    if (pthread_create(&connectionThread, NULL, receive_message, newsockfd) != 0) {
+        ZF_LOGF_STR("Error when creating new thread to accept incoming messages");
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -102,10 +108,22 @@ void close_all(void) {
 }
 
 void send_message_to_client(ListNode *node, char *message) {
-    size_t size = strlen(message);
+    if(node != NULL) {
 
-    write(node->newsockfd, &size, sizeof(size_t));
-    write(node->newsockfd, message, size);
+        size_t size = strlen(message);
+
+        ssize_t n = write(node->newsockfd, &size, sizeof(size_t));
+        if (n < 0) {
+            if (errno == EPIPE)
+                disconnect(node->newsockfd);
+            ZF_LOGW_STR("ERROR writing to socket");
+        } else {
+            n = write(node->newsockfd, message, size);
+            if (n < 0)
+                ZF_LOGW_STR("ERROR writing to socket");
+
+        }
+    }
 }
 
 void send_message_to_list(ListNode *node, char *message) {
@@ -116,12 +134,9 @@ void send_message_to_list(ListNode *node, char *message) {
 }
 
 void broadcast_message(char *message) {
-    ZF_LOGI_STR("Message Sending");
-    ZF_LOGI("Sending %s", message);
-    //LOCK MUTEX
+    pthread_mutex_lock(&connectionListMutex);
     send_message_to_list(connectionList, message);
-    //UNLOCK MUTEX
-    ZF_LOGI_STR("Message Sent");
+    pthread_mutex_unlock(&connectionListMutex);
 }
 
 void close_server() {
@@ -130,8 +145,43 @@ void close_server() {
 }
 
 ListNode *get_connection_list() {
-    ZF_LOGI("Pointer sent: %p", connectionList);
     return connectionList;
+}
+
+pthread_mutex_t *get_connection_mutex() {
+    return &connectionListMutex;
+}
+
+void receive_message(int clientsockfd) {
+    while (!closeServer) {
+        size_t size = 0;
+        ssize_t n = read(clientsockfd, &size, sizeof(size_t));
+        if (n < 0) // This means that no data is present yet.
+            continue;
+
+
+        char buffer[size];
+
+        n = read(clientsockfd, buffer, size);
+
+        if (n < 0)
+            ZF_LOGW_STR("ERROR reading data from socket");
+
+        if (strstr(buffer, CLIENT_DOWN)) {
+            disconnect(clientsockfd);
+            pthread_exit(NULL);
+        }
+    }
+}
+
+void disconnect(int clientsockfd) {
+    pthread_mutex_lock(&connectionListMutex);
+    int index = ListNode_getNodeIndexFromSockfd(connectionList, clientsockfd, 0);
+    if (index >= 0) {
+        ZF_LOGD_STR("Removing node");
+        ListNode_remove(connectionList, index);
+    }
+    pthread_mutex_unlock(&connectionListMutex);
 }
 
 #endif  // ASSIGNMENT_NETWORK_SERVER_C

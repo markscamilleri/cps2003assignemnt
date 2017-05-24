@@ -1,6 +1,6 @@
 CC=gcc
 
-CFLAGS=-pthread
+CFLAGS=-lncurses -pthread
 
 LDIR =../lib
 
@@ -15,6 +15,11 @@ OUTFILE_SERVER = $(LDIR)/server.o
 OUTFILE_CLIENT = $(LDIR)/client.o
 
 all: clean server client
+
+debug: clean
+	mkdir -p $(LDIR)
+	$(CC) -o $(OUTFILE_SERVER) $(CFLAGS) -g  $(DEPS) $(SERVER)
+	$(CC) -o $(OUTFILE_CLIENT) $(CFLAGS)  -g  $(DEPS) $(CLIENT)
 
 server:
 	mkdir -p $(LDIR)

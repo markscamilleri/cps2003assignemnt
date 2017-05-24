@@ -24,6 +24,16 @@ typedef struct ListNode {
 } ListNode;
 
 /**
+ * This type represents a tuple <int x ListNode>
+ */
+typedef struct Pair {
+    int index;
+    ListNode * node;
+} Pair;
+
+typedef int (*Predicate)(ListNode *);
+
+/**
  * Adds an element at the end of the ListNode List given
  * @param node  the list to add it to
  * @param sockfd the int value (newsockfd)
@@ -37,6 +47,14 @@ void ListNode_add(ListNode * node, int sockfd);
  * @return the int value at the ith element
  */
 int ListNode_get(ListNode * node, int i);
+
+/**
+ * Gets the index to the first element in the linked list that has the sockfd given
+ * @param node the list to check
+ * @param sockfd the sockfd to check
+ * @return the index to the first element, negative if not found
+ */
+int ListNode_getNodeIndexFromSockfd(ListNode *node, int sockfd, int n);
 
 /**
  * Removes the ith element from the linked list moving all elements to the left

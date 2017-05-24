@@ -27,6 +27,12 @@ int ListNode_get(ListNode *node, int i) {
     else return ListNode_get(node->next, i - 1);
 }
 
+int ListNode_getNodeIndexFromSockfd(ListNode *node, int sockfd, int n) {
+    if(node == NULL) return -99;
+    else if (node->newsockfd == sockfd) return n;
+    else return ListNode_getNodeIndexFromSockfd(node->next, sockfd, n+1);
+}
+
 void ListNode_remove(ListNode *node, int i) {
     if (i < 0)
         ZF_LOGF_STR("Tried to access a node that was out of range");
@@ -62,7 +68,6 @@ int ListNode_size(ListNode *node) {
 int ListNode_rec_size(ListNode *node, int n) {
     if (node == NULL) return  n;
     else {
-        ZF_LOGI("%d", node->newsockfd);
         return ListNode_rec_size(node->next, n + 1);
     }
 }
