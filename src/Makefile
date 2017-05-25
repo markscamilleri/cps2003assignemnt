@@ -19,7 +19,7 @@ all: clean server client
 debug: clean
 	mkdir -p $(LDIR)
 	$(CC) -o $(OUTFILE_SERVER) $(CFLAGS) -g  $(DEPS) $(SERVER)
-	$(CC) -o $(OUTFILE_CLIENT) $(CFLAGS)  -g  $(DEPS) $(CLIENT)
+	$(CC) -o $(OUTFILE_CLIENT) $(CFLAGS) -g  $(DEPS) $(CLIENT)
 
 server:
 	mkdir -p $(LDIR)
@@ -34,3 +34,4 @@ client:
 # clean the object files in ODIR and clean all core generated files including temp files (*~)
 clean:
 	rm -rf $(LDIR)/*.o
+

@@ -11,9 +11,13 @@
 #include <errno.h>
 #include <signal.h>
 #include "network_server.h"
+#include "arena.h"
 
 ListNode *connectionList = NULL;
 pthread_mutex_t connectionListMutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t gameLockWhenPlayerAddedMutex;
+
 
 int server_sockfd;
 
@@ -67,22 +71,31 @@ void init_server_and_accept_connections(int *start_sending) {
 
 void accept_connection(struct sockaddr *cli_addr, socklen_t *clilen) {
     int newsockfd = accept(server_sockfd, cli_addr, clilen);
-    pthread_mutex_lock(&connectionListMutex);
+    pthread_mutex_lock(&gameLockWhenPlayerAddedMutex);
     if (newsockfd < 0)
         ZF_LOGW_STR("ERROR on accepting connection request");
     else {
         if (connectionList == NULL) {
+            pthread_mutex_lock(&connectionListMutex);
             connectionList = malloc(sizeof(ListNode));
             connectionList->newsockfd = newsockfd;
             connectionList->next = NULL;
-        } else ListNode_add(connectionList, newsockfd);
+            pthread_mutex_unlock(&connectionListMutex);
+        } else {
+            pthread_mutex_lock(&connectionListMutex);
+            ListNode_add(connectionList, newsockfd);
+            pthread_mutex_unlock(&connectionListMutex);
+        }
         ZF_LOGD("There are %d nodes in the list", ListNode_size(connectionList));
-    }
-    pthread_mutex_unlock(&connectionListMutex);
-    pthread_t connectionThread;
-    if (pthread_create(&connectionThread, NULL, receive_message, newsockfd) != 0) {
-        ZF_LOGF_STR("Error when creating new thread to accept incoming messages");
-        exit(EXIT_FAILURE);
+
+        createPlayer(newsockfd);
+
+        pthread_mutex_unlock(&gameLockWhenPlayerAddedMutex);
+        pthread_t connectionThread;
+        if (pthread_create(&connectionThread, NULL, receive_message, &newsockfd) != 0) {
+            ZF_LOGF_STR("Error when creating new thread to accept incoming messages");
+            exit(EXIT_FAILURE);
+        }
     }
 }
 
@@ -108,26 +121,13 @@ void close_all(void) {
 }
 
 void send_str_message_to_client(ListNode *node, char *message) {
-    if(node != NULL) {
-
-        size_t size = strlen(message);
-
-        ssize_t n = write(node->newsockfd, &size, sizeof(size_t));
-        if (n < 0) {
-            if (errno == EPIPE)
-                disconnect(node->newsockfd);
-            ZF_LOGW_STR("ERROR writing to socket");
-        } else {
-            n = write(node->newsockfd, message, size);
-            if (n < 0)
-                ZF_LOGW_STR("ERROR writing to socket");
-
-        }
+    if (node != NULL) {
+        send_message_to_sockfd(node->newsockfd, message);
     }
 }
 
-void send_str_message_to_sockfd(int sockfd, char *message) {
-    if(ListNode_getNodeIndexFromSockfd(connectionList, sockfd, 0) >= 0){
+void send_message_to_sockfd(int sockfd, char *message) {
+    if (ListNode_getNodeIndexFromSockfd(connectionList, sockfd, 0) >= 0) {
         size_t size = strlen(message);
 
         ssize_t n = write(sockfd, &size, sizeof(size_t));
@@ -136,9 +136,23 @@ void send_str_message_to_sockfd(int sockfd, char *message) {
                 disconnect(sockfd);
             ZF_LOGW_STR("ERROR writing to socket");
         } else {
-            n = write(sockfd, message, size);
-            if (n < 0)
+            int type = MESSAGE_TYPE_STRING;
+
+            n = write(sockfd, &type, sizeof(int));
+
+            if (n < 0) {
+                if (errno == EPIPE)
+                    disconnect(sockfd);
                 ZF_LOGW_STR("ERROR writing to socket");
+            } else {
+
+                n = write(sockfd, message, size);
+                if (n < 0) {
+                    if (errno == EPIPE)
+                        disconnect(sockfd);
+                    ZF_LOGW_STR("ERROR writing to socket");
+                }
+            }
         }
     }
 }
@@ -151,10 +165,95 @@ void send_message_to_list(ListNode *node, char *message) {
 }
 
 void broadcast_message(char *message) {
-    pthread_mutex_lock(&connectionListMutex);
     send_message_to_list(connectionList, message);
-    pthread_mutex_unlock(&connectionListMutex);
 }
+
+void send_data_to_sockfd(int sockfd, void *data, int type) {
+    if (type == MESSAGE_TYPE_STRING)
+        send_message_to_sockfd(sockfd, data);
+    else if (type == MESSAGE_TYPE_MAP)
+        send_map_to_sockfd(sockfd, data);
+    else {
+        if (ListNode_getNodeIndexFromSockfd(connectionList, sockfd, 0) >= 0) {
+            size_t size = sizeof(data);
+
+            ssize_t n = write(sockfd, &size, sizeof(size_t));
+            if (n < 0) {
+                if (errno == EPIPE)
+                    disconnect(sockfd);
+                ZF_LOGW_STR("ERROR writing to socket");
+            } else {
+                n = write(sockfd, &type, sizeof(int));
+
+                if (n < 0) {
+                    if (errno == EPIPE)
+                        disconnect(sockfd);
+                    ZF_LOGW_STR("ERROR writing to socket");
+                } else {
+                    n = write(sockfd, data, size);
+                    if (n < 0) {
+                        if (errno == EPIPE)
+                            disconnect(sockfd);
+                        ZF_LOGW_STR("ERROR writing to socket");
+                    }
+                }
+            }
+        }
+    }
+}
+
+void send_map_to_sockfd(int sockfd, int map[MAP_SIZE][MAP_SIZE]) {
+    size_t size = sizeof(map);
+
+    ssize_t n = write(sockfd, &size, sizeof(size_t));
+    if (n < 0) {
+        if (errno == EPIPE)
+            disconnect(sockfd);
+        ZF_LOGW_STR("ERROR writing to socket");
+    } else {
+        int type = MESSAGE_TYPE_MAP;
+
+        n = write(sockfd, &type, sizeof(int));
+
+        if (n < 0) {
+            if (errno == EPIPE)
+                disconnect(sockfd);
+            ZF_LOGW_STR("ERROR writing to socket");
+        } else {
+
+            int ishash = 0;
+            for (int k = 0; k < MAP_SIZE; ++k) {
+                for (int i = 0; i < MAP_SIZE; ++i) {
+                    if(map[k][i] == '#') {
+                        ishash = 1;
+                        break;
+                    }
+                }
+            }
+
+            for (int i = 0; i < size; ++i) {
+                n = write(sockfd, map[i], sizeof(int) * MAP_SIZE);
+                if (n < 0) {
+                    if (errno == EPIPE)
+                        disconnect(sockfd);
+                    ZF_LOGW_STR("ERROR writing to socket");
+                }
+            }
+        }
+    }
+}
+
+void send_data_to_list(ListNode *node, void *data, int type) {
+    if (node != NULL) {
+        send_data_to_sockfd(node->newsockfd, data, type);
+        send_data_to_list(node->next, data, type);
+    }
+}
+
+void broadcast_data(void *data, int type) {
+    send_data_to_list(connectionList, data, type);
+}
+
 
 void close_server() {
     closeServer = 1;
@@ -165,15 +264,11 @@ ListNode *get_connection_list() {
     return connectionList;
 }
 
-pthread_mutex_t *get_connection_mutex() {
-    return &connectionListMutex;
-}
-
 void receive_message(int clientsockfd) {
     while (!closeServer) {
-        size_t size = 0;
+        size_t size;
         ssize_t n = read(clientsockfd, &size, sizeof(size_t));
-        if (n < 0) // This means that no data is present yet.
+        if (n < 0 || size <= 0) // This means that no data is present yet.
             continue;
 
 
@@ -187,18 +282,75 @@ void receive_message(int clientsockfd) {
         if (strstr(buffer, CLIENT_DOWN_MESSAGE)) {
             disconnect(clientsockfd);
             pthread_exit(NULL);
-        }
+        } else if (strcmp(buffer, "u") == 0)
+            changeDirection(clientsockfd, UP);
+        else if (strcmp(buffer, "x") == 0)
+            changeDirection(clientsockfd, DOWN);
+        else if (strcmp(buffer, "a") == 0)
+            changeDirection(clientsockfd, LEFT);
+        else if (strcmp(buffer, "d") == 0)
+            changeDirection(clientsockfd, RIGHT);
     }
 }
 
+// Resource is already accessed exclusively by this thread, hence, no mutexes.
 void disconnect(int clientsockfd) {
-    pthread_mutex_lock(&connectionListMutex);
     int index = ListNode_getNodeIndexFromSockfd(connectionList, clientsockfd, 0);
+
     if (index >= 0) {
         ZF_LOGD_STR("Removing node");
         ListNode_remove(connectionList, index);
+
+        removeSnake(clientsockfd);
     }
-    pthread_mutex_unlock(&connectionListMutex);
+}
+
+void send_player_snakes(SnakeDynArray players) {
+    for (int i = 0; i < players.used; ++i) {
+        send_player_snake(players.array + i);
+    }
+
+}
+
+void send_player_snake(Snake *player) {
+    size_t size = sizeof(Snake);
+
+    ssize_t n = write(player->playerNum, &size, sizeof(size_t));
+    if (n < 0) {
+        if (errno == EPIPE)
+            disconnect(player->playerNum);
+        ZF_LOGW_STR("ERROR writing to socket");
+    } else {
+        int type = MESSAGE_TYPE_PLAYER;
+        n = write(player->playerNum, &type, sizeof(int));
+        if (n < 0) {
+            if (errno == EPIPE)
+                disconnect(player->playerNum);
+            ZF_LOGW_STR("ERROR writing to socket");
+        } else {
+            n = write(player->playerNum, player, size);
+            if (n < 0) {
+                if (errno == EPIPE)
+                    disconnect(player->playerNum);
+                ZF_LOGW_STR("ERROR writing to socket");
+            } else {
+                size = sizeof(*(player->positions));
+                n = write(player->playerNum, &size, sizeof(size_t));
+                if (n < 0) {
+                    if (errno == EPIPE)
+                        disconnect(player->playerNum);
+                    ZF_LOGW_STR("ERROR writing to socket");
+                } else {
+                    n = write(player->playerNum, player->positions, size);
+                    if (n < 0) {
+                        if (errno == EPIPE)
+                            disconnect(player->playerNum);
+                        ZF_LOGW_STR("ERROR writing to socket");
+                    }
+                }
+            }
+        }
+    }
 }
 
 #endif  // ASSIGNMENT_NETWORK_SERVER_C

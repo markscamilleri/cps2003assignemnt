@@ -23,6 +23,14 @@
 #include "../config.h"
 
 /**
+ * Some syntactic sugar for a pair of ints
+ */
+typedef struct Score{
+    int playerNum;
+    int score;
+} Score;
+
+/**
  * Initializes the arena and game
  */
 void init_arena(void);
@@ -40,17 +48,23 @@ void createPlayer(int playerNum);
 void moveSnake(Snake *snake);
 
 /**
+ * Removes the snake from the arena
+ * @param playerNum
+ */
+void removeSnake(int playerNum);
+
+/**
  * Changes the snake's direction. This does so with mutexes
- * @param snake the snake to change direction
+ * @param playerNum the snake to change direction
  * @param dir the new direction
  */
-void changeDirection(Snake *snake, Direction dir);
+void changeDirection(int playerNum, int dir);
 
 /**
  * Spawns a fruit in a random location
  * @return the location of this fruit
  */
-void spawnFruit();
+void randomlySpawnFruit();
 
 /**
  * Called when a player has lost
@@ -79,5 +93,12 @@ void add_players();
  */
 void play();
 
+/**
+ * Updates and broadcasts scores
+ */
+void update_send_scores();
+
+/// What to do when exiting
+void onExit();
 
 #endif  // SERVER_ARENA_H

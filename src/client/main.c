@@ -4,7 +4,6 @@
  * @version 20170521.
  */
 
-#include <time.h>
 #include "network_client.h"
 #include "client_ui.h"
 

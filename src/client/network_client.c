@@ -6,6 +6,7 @@
 
 #include <pthread.h>
 #include "network_client.h"
+#include "client_ui.h"
 
 int client_sockfd;
 
@@ -74,19 +75,69 @@ void send_message_to_server(char *message) {
 void receive_message(void) {
     while (!closeClient) {
         size_t size = 0;
-        ssize_t n = read(client_sockfd, &size, sizeof(size_t));
-        if (n < 0) // No data to read;
+        ssize_t n = n = read(client_sockfd, &size, sizeof(size_t));
+        if (n < 0 || size <= 0) // No data to read;
             continue;
 
-        char buffer[size];
+        int type;
+        n = read(client_sockfd, &type, sizeof(int));
 
-        n = read(client_sockfd, buffer, size);
+        if (type == MESSAGE_TYPE_STRING) {
+            char buffer[size];
 
-        if (n < 0)
-            ZF_LOGW_STR("ERROR reading data from socket");
+            n = read(client_sockfd, buffer, size);
+            if (n < 0)
+                ZF_LOGW_STR("ERROR reading data from socket");
 
-        if (strstr(buffer, SERVER_DOWN_MESSAGE)) {
-            exit(EXIT_SUCCESS);
+            if (strstr(buffer, SERVER_DOWN_MESSAGE)) {
+                showExitMessage("Server went down");
+            } else if (strstr(buffer, PLAYER_WON_MESSAGE)) {
+                showExitMessage("Congratulations, you won!");
+            } else if (strstr(buffer, PLAYER_LOST_MESSAGE)) {
+                showExitMessage("Oh No! You lost :(");
+            }
+        } else if (type == MESSAGE_TYPE_MAP) {
+            int map[MAP_SIZE][MAP_SIZE];
+
+            for (int i = 0; i < size; ++i) {
+                n = read(client_sockfd, map[i], sizeof(int) * MAP_SIZE);
+                if (n < 0) {
+                    ZF_LOGW_STR("ERROR writing to socket");
+                }
+            }
+
+            update_map(map);
+        } else if (type == MESSAGE_TYPE_PLAYER) {
+            Snake player;
+
+            n = read(client_sockfd, &player, size);
+
+            if (n < 0)
+                ZF_LOGW_STR("ERROR reading data from socket");
+            else {
+                n = read(client_sockfd, &size, sizeof(size_t));
+                if (n < 0) {
+                    ZF_LOGW_STR("ERROR reading data from socket");
+                } else {
+                    player.positions = malloc(size);
+
+                    n = read(client_sockfd, player.positions, size);
+                    if (n < 0) {
+                        ZF_LOGW_STR("ERROR reading data from socket");
+                    } else {
+                        update_snake(player);
+                    }
+                }
+            }
+        } else if (type == MESSAGE_TYPE_SCORES) {
+            Score scores[size / sizeof(Score)];
+
+            n = read(client_sockfd, &scores, size);
+
+            if (n < 0)
+                ZF_LOGW_STR("ERROR reading data from socket");
+            else
+                update_scores(scores);
         }
     }
 }

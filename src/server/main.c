@@ -5,10 +5,13 @@
  */
 
 #include "network_server.h"
+#include "arena.h"
+
+pthread_mutex_t gameLockWhenPlayerAddedMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void delay(unsigned int secs) {
-    unsigned int retTime = time(0) + secs;   // Get finishing time.
-    while (time(0) < retTime);               // Loop until it arrives.
+    unsigned int retTime = time(NULL) + secs;   // Get finishing time.
+    while (time(NULL) < retTime);               // Loop until it arrives.
 }
 
 int main(void) {
@@ -22,33 +25,8 @@ int main(void) {
 
     while (!start_sending);
 
-    while (ListNode_size(get_connection_list()) == 0) {
-        ZF_LOGI("List ptr: %p", get_connection_list());
-        ZF_LOGI("Size: %d", ListNode_size(get_connection_list()));
-        delay(10);
-    }
-    broadcast_message("Hello World!");
-    broadcast_message("How are you today?");
+    init_arena();
+    play();
 
-    ListNode *connectionList = get_connection_list();
-    pthread_mutex_t * mutex = get_connection_mutex();
-
-    char *message;
-    while (1) {
-        pthread_mutex_lock(mutex);
-        ZF_LOGI("There are %d active connections", ListNode_size(connectionList));
-        pthread_mutex_unlock(mutex);
-        broadcast_message(message);
-        broadcast_message("Let's wait 10 seconds");
-        delay(10);
-
-        pthread_mutex_lock(mutex);
-        ZF_LOGI("There are %d active and no inactive connections", ListNode_size(connectionList));
-        pthread_mutex_unlock(mutex);
-        broadcast_message(message);
-        broadcast_message("Let's wait 10 seconds");
-        delay(10);
-    }
-    ZF_LOGI_STR("Bye");
     exit(EXIT_SUCCESS);
 }

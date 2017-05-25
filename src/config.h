@@ -9,12 +9,22 @@
 #ifndef ASSIGNMENT_CONFIG_H
 #define ASSIGNMENT_CONFIG_H
 
-#define PORT_NUMBER 24689
-#define ZF_LOG_LEVEL ZF_LOG_DEBUG
+#define PORT_NUMBER 9998
+#define ZF_LOG_LEVEL ZF_LOG_FATAL
 #define SERVER_DOWN_MESSAGE "Server going down"
 #define CLIENT_DOWN_MESSAGE "Client Disconnected"
 #define PLAYER_LOST_MESSAGE "You Lost"
-#define PLAYER_WON_MESSAGE(playerNum) "Player " playerNum "won"
+#define PLAYER_WON_MESSAGE "Winner Player "
+
+#define UP 1
+#define LEFT 2
+#define RIGHT 3
+#define DOWN 4
+
+#define MESSAGE_TYPE_STRING 0
+#define MESSAGE_TYPE_MAP 1
+#define MESSAGE_TYPE_PLAYER 2
+#define MESSAGE_TYPE_SCORES 3
 
 #define MAP_SIZE 1000
 
