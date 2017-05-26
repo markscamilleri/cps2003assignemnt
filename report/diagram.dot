@@ -1,0 +1,16 @@
+Title: Client-Server interaction
+Client->Server: Connect
+Note right of Server: Add client to list of connected clients
+Note right of Server: Start listening to client for messages
+Note left of Client: Start listening to server for messages
+Note right of Server: Loop, send at every turn
+Server->Client: Snake details
+Server->Client: Current scores
+Server->Client: Map
+Note right of Server: End loop
+Note left of Client: After user input
+Client->Server: Direction Character
+Note right of Server: If a player looses
+Server->Client: You lost!
+Note right of Server: If a player wins
+Server->Client: You won!

@@ -74,7 +74,7 @@ void init_gui(void) {
 
 void handle_output() {
     while (!closeClient) {
-        clear();
+	clear();
         getmaxyx(stdscr, max_y, max_x);
         handle_map_output();
         handle_score_output();
@@ -95,10 +95,6 @@ void handle_map_output(void) {
 
     mapWindow = newwin(max_y - 7, max_x - 16, 0, 0);
 
-    wclear(mapWindow);
-
-    box(mapWindow, '|', '-');
-
     int start_col = player.positions[0].x - ((max_x - 16) / 2);
     int start_row = player.positions[0].y + ((max_y - 7) / 2);
 
@@ -112,6 +108,9 @@ void handle_map_output(void) {
         start_row = MAP_SIZE - max_y + 7;
 
     pthread_mutex_lock(&mapMutex);
+    wclear(mapWindow);
+    box(mapWindow, '|', '-');
+
     for (int i = 1; i < max_y - 8; ++i) {
         for (int j = 1; j < max_x - 17; ++j) {
 
@@ -241,6 +240,9 @@ void update_scores(Score pScores[]) {
 }
 
 void showExitMessage(char *message) {
+    wclear(map);
+    wclear(score);
+    wclear(instructions);
     clear();
     getmaxyx(stdscr, max_y, max_x);
     mvprintw(max_y / 2, (max_x - strlen(message)) / 2, message);

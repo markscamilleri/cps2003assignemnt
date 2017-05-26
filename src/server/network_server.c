@@ -220,17 +220,6 @@ void send_map_to_sockfd(int sockfd, int map[MAP_SIZE][MAP_SIZE]) {
                 disconnect(sockfd);
             ZF_LOGW_STR("ERROR writing to socket");
         } else {
-
-            int ishash = 0;
-            for (int k = 0; k < MAP_SIZE; ++k) {
-                for (int i = 0; i < MAP_SIZE; ++i) {
-                    if(map[k][i] == '#') {
-                        ishash = 1;
-                        break;
-                    }
-                }
-            }
-
             for (int i = 0; i < size; ++i) {
                 n = write(sockfd, map[i], sizeof(int) * MAP_SIZE);
                 if (n < 0) {
